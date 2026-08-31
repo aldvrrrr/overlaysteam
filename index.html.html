@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Hold Button Overlay (Auto-Hide Controls)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+            font-family: 'Arial Black', sans-serif;
+            user-select: none;
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        /* Container Bar Utama */
+        .bar-container {
+            width: 350px;
+            height: 40px;
+            background-color: rgba(0, 0, 0, 0.75);
+            border: 3px solid #000;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            margin-bottom: 10px;
+        }
+
+        /* Isi Bar Hijau/Merah */
+        .bar-fill {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.1s linear, background-color 0.3s ease;
+        }
+
+        /* Teks Angka di Atas Bar */
+        .bar-text {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px #000, -2px -2px 4px #000, 2px -2px 4px #000, -2px 2px 4px #000;
+            white-space: nowrap;
+        }
+
+        /* Animasi Berkedip Saat Bleedout */
+        .blink {
+            animation: blinker 0.8s linear infinite;
+        }
+        @keyframes blinker {
+            50% { opacity: 0.2; }
+        }
+
+        /* Panel Tombol Kontrol (Akan disembunyikan di TikTok) */
+        .control-panel {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            font-weight: bold;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-damage { background-color: #f44336; }
+        .btn-heal { background-color: #2196F3; }
+        .btn-reset { background-color: #757575; }
+        .btn:active { transform: scale(0.95); }
+
+        /* KODE PENTING: Sembunyikan tombol saat dibuka sebagai Browser Source */
+        @media screen and (max-width: 400px), screen and (max-height: 100px) {
+            .control-panel {
+                display: none;
+            }
+            body {
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Tampilan Bar (Ini yang mau dilihat penonton) -->
+    <div class="bar-container">
+        <div id="fill" class="bar-fill"></div>
+        <div id="text" class="bar-text">5000 / 5000</div>
+    </div>
+
+    <!-- Panel Tombol Kontrol (Untuk kamu pencet di Browser) -->
+    <div class="control-panel">
+        <button class="btn btn-damage" 
+                onmousedown="startDamage()" 
+                onmouseup="stopDamage()" 
+                onmouseleave="stopDamage()">
+            HOLD: TARIK HP (-100/detik)
+        </button>
+        <button class="btn btn-heal" onclick="addHP(1000)">+1000</button>
+        <button class="btn btn-reset" onclick="resetHP()">RESET</button>
+    </div>
+
+    <script>
+        const maxHP = 5000;
+        let currentHP = 5000;
+        const bleedoutTime = 10; 
+        
+        let countdownVal = bleedoutTime;
+        let bleedTimer = null;
+        let holdInterval = null;
+        let isBleeding = false;
+
+        const fillEl = document.getElementById('fill');
+        const textEl = document.getElementById('text');
+
+        function updateUI() {
+            if (isBleeding) return;
+
+            currentHP = Math.max(0, Math.min(maxHP, currentHP));
+            
+            let percent = (currentHP / maxHP) * 100;
+            fillEl.style.width = percent + "%";
+            fillEl.style.background = "linear-gradient(90deg, #4CAF50, #8BC34A)";
+            textEl.classList.remove('blink');
+            textEl.innerText = Math.floor(currentHP) + " / " + maxHP;
+
+            if (currentHP === 0 && !isBleeding) {
+                stopDamage();
+                startBleedout();
+            }
+        }
+
+        function startDamage() {
+            if (isBleeding || holdInterval !== null) return;
+            // Setiap 50ms (0.05 detik) HP berkurang 50 angka (1000 HP per detik)
+            holdInterval = setInterval(() => {
+                currentHP -= 50;
+                updateUI();
+            }, 50);
+        }
+
+        function stopDamage() {
+            if (holdInterval !== null) {
+                clearInterval(holdInterval);
+                holdInterval = null;
+            }
+        }
+
+        function addHP(amount) {
+            if (isBleeding && amount > 0) {
+                stopBleedout();
+                currentHP = amount;
+                updateUI();
+            } else if (!isBleeding) {
+                currentHP += amount;
+                updateUI();
+            }
+        }
+
+        function startBleedout() {
+            isBleeding = true;
+            countdownVal = bleedoutTime;
+            
+            fillEl.style.width = "100%";
+            fillEl.style.background = "#d32f2f"; 
+            textEl.classList.add('blink');
+            textEl.innerText = "BLEEDOUT: " + countdownVal + "s";
+
+            bleedTimer = setInterval(() => {
+                countdownVal--;
+                if (countdownVal > 0) {
+                    textEl.innerText = "BLEEDOUT: " + countdownVal + "s";
+                    fillEl.style.width = ((countdownVal / bleedoutTime) * 100) + "%";
+                } else {
+                    clearInterval(bleedTimer);
+                    textEl.innerText = "GAME OVER!";
+                    fillEl.style.width = "0%";
+                }
+            }, 1000);
+        }
+
+        function stopBleedout() {
+            isBleeding = false;
+            clearInterval(bleedTimer);
+            textEl.classList.remove('blink');
+        }
+
+        function resetHP() {
+            stopDamage();
+            stopBleedout();
+            currentHP = maxHP;
+            updateUI();
+        }
+
+        // Tampilkan Bar Awal
+        updateUI();
+    </script>
+</body>
+</html>
