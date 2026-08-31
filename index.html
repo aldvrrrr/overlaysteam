@@ -28,7 +28,7 @@
             width: 100%;
             height: 100%;
             background: linear-gradient(90deg, #4CAF50, #8BC34A);
-            transition: width 0.15s ease-out, background-color 0.3s ease;
+            transition: width 0.05s linear, background-color 0.3s ease;
         }
 
         .bar-text {
@@ -78,7 +78,9 @@
                 fillEl.style.width = ((countdownVal / 10) * 100) + "%";
                 fillEl.style.background = "#d32f2f";
                 textEl.classList.add('blink');
-                textEl.innerText = countdownVal > 0 ? "BLEEDOUT: " + countdownVal + "s" : "GAME OVER!";
+                
+                // DETIK TETAP DITAMPILKAN DI SINI
+                textEl.innerText = countdownVal > 0 ? "GAME OVER (" + countdownVal + "s)" : "MINUS 1";
             } else {
                 let percent = (currentHP / maxHP) * 100;
                 fillEl.style.width = percent + "%";
@@ -91,14 +93,14 @@
         function startDamage() {
             if (isBleeding || holdInterval !== null) return;
             holdInterval = setInterval(() => {
-                currentHP -= 50;
+                currentHP -= 1; 
                 if (currentHP <= 0) {
                     currentHP = 0;
                     stopDamage();
                     startBleedout();
                 }
                 updateUI();
-            }, 50);
+            }, 10);
         }
 
         function stopDamage() {
