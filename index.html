@@ -2,7 +2,9 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Hold Button Overlay with Keyboard Shortcuts</title>
+    <title>HP Bar Display</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
         body {
             margin: 0;
@@ -10,9 +12,7 @@
             font-family: 'Arial Black', sans-serif;
             user-select: none;
             background: transparent;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
+            overflow: hidden;
         }
 
         .bar-container {
@@ -24,14 +24,13 @@
             position: relative;
             overflow: hidden;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            margin-bottom: 10px;
         }
 
         .bar-fill {
             width: 100%;
             height: 100%;
             background: linear-gradient(90deg, #4CAF50, #8BC34A);
-            transition: width 0.1s linear, background-color 0.3s ease;
+            transition: width 0.15s ease-out, background-color 0.3s ease;
         }
 
         .bar-text {
@@ -55,179 +54,50 @@
         @keyframes blinker {
             50% { opacity: 0.2; }
         }
-
-        .control-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 8px;
-        }
-
-        .btn {
-            padding: 12px 20px;
-            font-weight: bold;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .btn-damage { background-color: #f44336; }
-        .btn-heal { background-color: #2196F3; }
-        .btn-reset { background-color: #757575; }
-        .btn:active { transform: scale(0.95); }
-
-        .hint {
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            color: #333;
-            background: rgba(255,255,255,0.8);
-            padding: 4px 8px;
-            border-radius: 4px;
-        }
     </style>
 </head>
 <body>
 
     <div class="bar-container">
         <div id="fill" class="bar-fill"></div>
-        <div id="text" class="bar-text">5000 / 5000</div>
-    </div>
-
-    <div class="control-panel">
-        <div class="btn-group">
-            <button class="btn btn-damage" 
-                    onmousedown="startDamage()" 
-                    onmouseup="stopDamage()" 
-                    onmouseleave="stopDamage()">
-                HOLD: TARIK HP (Panah Bawah / 1)
-            </button>
-            <button class="btn btn-heal" onclick="addHP(1000)">+1000 (Panah Atas / 2)</button>
-            <button class="btn btn-reset" onclick="resetHP()">RESET (R)</button>
-        </div>
-        <div class="hint">
-            💡 Shortcut Keyboard: <b>[Panah Bawah / 1]</b> Tarik HP | <b>[Panah Atas / 2]</b> +1000 | <b>[R]</b> Reset
-        </div>
+        <div id="text" class="bar-text">HP 5000</div>
     </div>
 
     <script>
-        const maxHP = 5000;
-        let currentHP = 5000;
-        const bleedoutTime = 10; 
-        
-        let countdownVal = bleedoutTime;
-        let bleedTimer = null;
-        let holdInterval = null;
-        let isBleeding = false;
-        let isKeyDown = false;
+        const firebaseConfig = {
+            apiKey: "PASTE_API_KEY_KAMU",
+            authDomain: "overlay-roblok-keal.firebaseapp.com",
+            databaseURL: "https://overlay-roblok-keal-default-rtdb.firebaseio.com",
+            projectId: "overlay-roblok-keal",
+            storageBucket: "overlay-roblok-keal.appspot.com",
+            messagingSenderId: "PASTE_SENDER_ID",
+            appId: "PASTE_APP_ID"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database().ref('hpState');
 
         const fillEl = document.getElementById('fill');
         const textEl = document.getElementById('text');
+        const maxHP = 5000;
 
-        function updateUI() {
-            if (isBleeding) return;
+        db.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
 
-            currentHP = Math.max(0, Math.min(maxHP, currentHP));
-            
-            let percent = (currentHP / maxHP) * 100;
-            fillEl.style.width = percent + "%";
-            fillEl.style.background = "linear-gradient(90deg, #4CAF50, #8BC34A)";
-            textEl.classList.remove('blink');
-            textEl.innerText = Math.floor(currentHP) + " / " + maxHP;
-
-            if (currentHP === 0 && !isBleeding) {
-                stopDamage();
-                startBleedout();
-            }
-        }
-
-        function startDamage() {
-            if (isBleeding || holdInterval !== null) return;
-            holdInterval = setInterval(() => {
-                currentHP -= 50;
-                updateUI();
-            }, 50);
-        }
-
-        function stopDamage() {
-            if (holdInterval !== null) {
-                clearInterval(holdInterval);
-                holdInterval = null;
-            }
-        }
-
-        function addHP(amount) {
-            if (isBleeding && amount > 0) {
-                stopBleedout();
-                currentHP = amount;
-                updateUI();
-            } else if (!isBleeding) {
-                currentHP += amount;
-                updateUI();
-            }
-        }
-
-        function startBleedout() {
-            isBleeding = true;
-            countdownVal = bleedoutTime;
-            
-            fillEl.style.width = "100%";
-            fillEl.style.background = "#d32f2f"; 
-            textEl.classList.add('blink');
-            textEl.innerText = "BLEEDOUT: " + countdownVal + "s";
-
-            bleedTimer = setInterval(() => {
-                countdownVal--;
-                if (countdownVal > 0) {
-                    textEl.innerText = "BLEEDOUT: " + countdownVal + "s";
-                    fillEl.style.width = ((countdownVal / bleedoutTime) * 100) + "%";
-                } else {
-                    clearInterval(bleedTimer);
-                    textEl.innerText = "GAME OVER!";
-                    fillEl.style.width = "0%";
-                }
-            }, 1000);
-        }
-
-        function stopBleedout() {
-            isBleeding = false;
-            clearInterval(bleedTimer);
-            textEl.classList.remove('blink');
-        }
-
-        function resetHP() {
-            stopDamage();
-            stopBleedout();
-            currentHP = maxHP;
-            updateUI();
-        }
-
-        // CONTROL KEYBOARD
-        window.addEventListener('keydown', (e) => {
-            if (isKeyDown) return; // Mencegah spaming event pas tombol ditahan
-
-            if (e.key === 'ArrowDown' || e.key === '1') {
-                isKeyDown = true;
-                startDamage();
-            } else if (e.key === 'ArrowUp' || e.key === '2') {
-                addHP(1000);
-            } else if (e.key === 'r' || e.key === 'R') {
-                resetHP();
+            if (data.isBleeding) {
+                fillEl.style.width = ((data.countdown / 10) * 100) + "%";
+                fillEl.style.background = "#d32f2f";
+                textEl.classList.add('blink');
+                textEl.innerText = data.countdown > 0 ? "BLEEDOUT: " + data.countdown + "s" : "GAME OVER!";
+            } else {
+                let percent = (data.currentHP / maxHP) * 100;
+                fillEl.style.width = percent + "%";
+                fillEl.style.background = "linear-gradient(90deg, #4CAF50, #8BC34A)";
+                textEl.classList.remove('blink');
+                textEl.innerText = "HP " + Math.floor(data.currentHP);
             }
         });
-
-        window.addEventListener('keyup', (e) => {
-            if (e.key === 'ArrowDown' || e.key === '1') {
-                isKeyDown = false;
-                stopDamage();
-            }
-        });
-
-        updateUI();
     </script>
 </body>
 </html>
