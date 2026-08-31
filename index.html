@@ -3,8 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>HP Bar Display</title>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <style>
         body {
             margin: 0;
@@ -64,130 +62,6 @@
     </div>
 
     <script>
-        const firebaseConfig = {
-            apiKey: "PASTE_API_KEY_KAMU",
-            authDomain: "overlay-roblok-keal.firebaseapp.com",
-            databaseURL: "https://overlay-roblok-keal-default-rtdb.firebaseio.com",
-            projectId: "overlay-roblok-keal",
-            storageBucket: "overlay-roblok-keal.appspot.com",
-            messagingSenderId: "PASTE_SENDER_ID",
-            appId: "PASTE_APP_ID"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database().ref('hpState');
-
-        const fillEl = document.getElementById('fill');
-        const textEl = document.getElementById('text');
-        const maxHP = 5000;
-
-        db.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (!data) return;
-
-            if (data.isBleeding) {
-                fillEl.style.width = ((data.countdown / 10) * 100) + "%";
-                fillEl.style.background = "#d32f2f";
-                textEl.classList.add('blink');
-                textEl.innerText = data.countdown > 0 ? "BLEEDOUT: " + data.countdown + "s" : "GAME OVER!";
-            } else {
-                let percent = (data.currentHP / maxHP) * 100;
-                fillEl.style.width = percent + "%";
-                fillEl.style.background = "linear-gradient(90deg, #4CAF50, #8BC34A)";
-                textEl.classList.remove('blink');
-                textEl.innerText = "HP " + Math.floor(data.currentHP);
-            }
-        });
-    </script>
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HP Remote Controller</title>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-    <style>
-        body {
-            font-family: 'Arial Black', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            background: #18181c;
-            color: white;
-            user-select: none;
-        }
-
-        h2 { margin-bottom: 20px; font-size: 22px; color: #ffcc00; }
-
-        .btn-container {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            width: 85%;
-            max-width: 320px;
-        }
-
-        .btn {
-            padding: 18px;
-            font-size: 16px;
-            font-weight: bold;
-            color: white;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            touch-action: manipulation;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            transition: transform 0.1s ease;
-        }
-        .btn:active { transform: scale(0.96); }
-
-        .btn-damage { background: linear-gradient(135deg, #ff4d4d, #b71c1c); }
-        .btn-heal { background: linear-gradient(135deg, #4caf50, #1b5e20); }
-        .btn-reset { background: linear-gradient(135deg, #757575, #424242); }
-
-        .hint {
-            margin-top: 15px;
-            font-size: 12px;
-            color: #aaa;
-            font-family: Arial, sans-serif;
-            text-align: center;
-        }
-    </style>
-</head>
-<body>
-
-    <h2>REMOTE HP STREAM</h2>
-
-    <div class="btn-container">
-        <button class="btn btn-damage" id="dmgBtn">🔥 BERKURANG (TAHAN R)</button>
-        <button class="btn btn-heal" onclick="addHP(1000)">💚 BERTAMBAH (PENCET T)</button>
-        <button class="btn btn-reset" onclick="resetHP()">🔄 RESET (PENCET Y)</button>
-    </div>
-
-    <div class="hint">
-        💡 Shortcut Keyboard: <b>[R]</b> Berkurang | <b>[T]</b> +1000 HP | <b>[Y]</b> Reset
-    </div>
-
-    <script>
-        const firebaseConfig = {
-            apiKey: "PASTE_API_KEY_KAMU",
-            authDomain: "overlay-roblok-keal.firebaseapp.com",
-            databaseURL: "https://overlay-roblok-keal-default-rtdb.firebaseio.com",
-            projectId: "overlay-roblok-keal",
-            storageBucket: "overlay-roblok-keal.appspot.com",
-            messagingSenderId: "PASTE_SENDER_ID",
-            appId: "PASTE_APP_ID"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database().ref('hpState');
-
         const maxHP = 5000;
         let currentHP = 5000;
         let holdInterval = null;
@@ -196,12 +70,22 @@
         let countdownVal = 10;
         let isKeyDown = false;
 
-        function syncDB() {
-            db.set({
-                currentHP: currentHP,
-                isBleeding: isBleeding,
-                countdown: countdownVal
-            });
+        const fillEl = document.getElementById('fill');
+        const textEl = document.getElementById('text');
+
+        function updateUI() {
+            if (isBleeding) {
+                fillEl.style.width = ((countdownVal / 10) * 100) + "%";
+                fillEl.style.background = "#d32f2f";
+                textEl.classList.add('blink');
+                textEl.innerText = countdownVal > 0 ? "BLEEDOUT: " + countdownVal + "s" : "GAME OVER!";
+            } else {
+                let percent = (currentHP / maxHP) * 100;
+                fillEl.style.width = percent + "%";
+                fillEl.style.background = "linear-gradient(90deg, #4CAF50, #8BC34A)";
+                textEl.classList.remove('blink');
+                textEl.innerText = "HP " + Math.floor(currentHP);
+            }
         }
 
         function startDamage() {
@@ -213,7 +97,7 @@
                     stopDamage();
                     startBleedout();
                 }
-                syncDB();
+                updateUI();
             }, 50);
         }
 
@@ -231,17 +115,17 @@
             } else {
                 currentHP = Math.min(maxHP, currentHP + amount);
             }
-            syncDB();
+            updateUI();
         }
 
         function startBleedout() {
             isBleeding = true;
             countdownVal = 10;
-            syncDB();
+            updateUI();
 
             bleedTimer = setInterval(() => {
                 countdownVal--;
-                syncDB();
+                updateUI();
                 if (countdownVal <= 0) {
                     clearInterval(bleedTimer);
                 }
@@ -257,18 +141,10 @@
             stopDamage();
             stopBleedout();
             currentHP = maxHP;
-            syncDB();
+            updateUI();
         }
 
-        // EVENT MOUSE & TOUCH HP
-        const dmgBtn = document.getElementById('dmgBtn');
-        dmgBtn.addEventListener('mousedown', startDamage);
-        dmgBtn.addEventListener('mouseup', stopDamage);
-        dmgBtn.addEventListener('mouseleave', stopDamage);
-        dmgBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startDamage(); });
-        dmgBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopDamage(); });
-
-        // SHORTCUT KEYBOARD (R = Berkurang, T = Tambah, Y = Reset)
+        // CONTROL KEYBOARD
         window.addEventListener('keydown', (e) => {
             if (isKeyDown) return;
             const key = e.key.toLowerCase();
@@ -290,7 +166,7 @@
             }
         });
 
-        resetHP();
+        updateUI();
     </script>
 </body>
 </html>
