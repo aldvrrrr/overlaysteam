@@ -101,3 +101,196 @@
     </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HP Remote Controller</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        body {
+            font-family: 'Arial Black', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: #18181c;
+            color: white;
+            user-select: none;
+        }
+
+        h2 { margin-bottom: 20px; font-size: 22px; color: #ffcc00; }
+
+        .btn-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 85%;
+            max-width: 320px;
+        }
+
+        .btn {
+            padding: 18px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            touch-action: manipulation;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: transform 0.1s ease;
+        }
+        .btn:active { transform: scale(0.96); }
+
+        .btn-damage { background: linear-gradient(135deg, #ff4d4d, #b71c1c); }
+        .btn-heal { background: linear-gradient(135deg, #4caf50, #1b5e20); }
+        .btn-reset { background: linear-gradient(135deg, #757575, #424242); }
+
+        .hint {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #aaa;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>REMOTE HP STREAM</h2>
+
+    <div class="btn-container">
+        <button class="btn btn-damage" id="dmgBtn">🔥 BERKURANG (TAHAN R)</button>
+        <button class="btn btn-heal" onclick="addHP(1000)">💚 BERTAMBAH (PENCET T)</button>
+        <button class="btn btn-reset" onclick="resetHP()">🔄 RESET (PENCET Y)</button>
+    </div>
+
+    <div class="hint">
+        💡 Shortcut Keyboard: <b>[R]</b> Berkurang | <b>[T]</b> +1000 HP | <b>[Y]</b> Reset
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "PASTE_API_KEY_KAMU",
+            authDomain: "overlay-roblok-keal.firebaseapp.com",
+            databaseURL: "https://overlay-roblok-keal-default-rtdb.firebaseio.com",
+            projectId: "overlay-roblok-keal",
+            storageBucket: "overlay-roblok-keal.appspot.com",
+            messagingSenderId: "PASTE_SENDER_ID",
+            appId: "PASTE_APP_ID"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database().ref('hpState');
+
+        const maxHP = 5000;
+        let currentHP = 5000;
+        let holdInterval = null;
+        let bleedTimer = null;
+        let isBleeding = false;
+        let countdownVal = 10;
+        let isKeyDown = false;
+
+        function syncDB() {
+            db.set({
+                currentHP: currentHP,
+                isBleeding: isBleeding,
+                countdown: countdownVal
+            });
+        }
+
+        function startDamage() {
+            if (isBleeding || holdInterval !== null) return;
+            holdInterval = setInterval(() => {
+                currentHP -= 50;
+                if (currentHP <= 0) {
+                    currentHP = 0;
+                    stopDamage();
+                    startBleedout();
+                }
+                syncDB();
+            }, 50);
+        }
+
+        function stopDamage() {
+            if (holdInterval !== null) {
+                clearInterval(holdInterval);
+                holdInterval = null;
+            }
+        }
+
+        function addHP(amount) {
+            if (isBleeding) {
+                stopBleedout();
+                currentHP = amount;
+            } else {
+                currentHP = Math.min(maxHP, currentHP + amount);
+            }
+            syncDB();
+        }
+
+        function startBleedout() {
+            isBleeding = true;
+            countdownVal = 10;
+            syncDB();
+
+            bleedTimer = setInterval(() => {
+                countdownVal--;
+                syncDB();
+                if (countdownVal <= 0) {
+                    clearInterval(bleedTimer);
+                }
+            }, 1000);
+        }
+
+        function stopBleedout() {
+            isBleeding = false;
+            clearInterval(bleedTimer);
+        }
+
+        function resetHP() {
+            stopDamage();
+            stopBleedout();
+            currentHP = maxHP;
+            syncDB();
+        }
+
+        // EVENT MOUSE & TOUCH HP
+        const dmgBtn = document.getElementById('dmgBtn');
+        dmgBtn.addEventListener('mousedown', startDamage);
+        dmgBtn.addEventListener('mouseup', stopDamage);
+        dmgBtn.addEventListener('mouseleave', stopDamage);
+        dmgBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startDamage(); });
+        dmgBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopDamage(); });
+
+        // SHORTCUT KEYBOARD (R = Berkurang, T = Tambah, Y = Reset)
+        window.addEventListener('keydown', (e) => {
+            if (isKeyDown) return;
+            const key = e.key.toLowerCase();
+            
+            if (key === 'r') { 
+                isKeyDown = true; 
+                startDamage(); 
+            } else if (key === 't') { 
+                addHP(1000); 
+            } else if (key === 'y') { 
+                resetHP(); 
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key.toLowerCase() === 'r') { 
+                isKeyDown = false; 
+                stopDamage(); 
+            }
+        });
+
+        resetHP();
+    </script>
+</body>
+</html>
